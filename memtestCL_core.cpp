@@ -127,6 +127,7 @@ uint memtestState::allocate(uint mbToTest) {
 		deallocate();
 
         initTime = getTimeMilliseconds();
+	cl_mem_flags CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL = (1 << 23);
 		
         // Round up to nearest 2MiB
 		if (mbToTest % 2) mbToTest++;
@@ -139,7 +140,7 @@ uint memtestState::allocate(uint mbToTest) {
 		cl_int err;
 		try {
             // AMD's OpenCL will throw an error on allocation, NVIDIA on use. So both alloc and try to init.
-            devTestMem = clCreateBuffer(ctx,CL_MEM_READ_WRITE,megsToTest*1048576ULL,NULL,&err);
+            devTestMem = clCreateBuffer(ctx,CL_MEM_READ_WRITE|CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL,megsToTest*1048576ULL,NULL,&err);
             if (err != CL_SUCCESS) {
                 cerr << "Unable to allocate OpenCL memory: "<<descriptionOfError(err)<<endl;
                 throw 1;
@@ -150,7 +151,7 @@ uint memtestState::allocate(uint mbToTest) {
                 throw 1;
             }
 
-            devTempMem = clCreateBuffer(ctx,CL_MEM_READ_WRITE,sizeof(uint)*nBlocks,NULL,&err);
+            devTempMem = clCreateBuffer(ctx,CL_MEM_READ_WRITE|CL_MEM_ALLOW_UNRESTRICTED_SIZE_INTEL,sizeof(uint)*nBlocks,NULL,&err);
             if (err != CL_SUCCESS) {
                 cerr << "Unable to allocate OpenCL memory: "<<descriptionOfError(err)<<endl;
                 throw 2;
@@ -352,7 +353,7 @@ memtestFunctions::memtestFunctions(cl_context context,cl_device_id device,cl_com
     clRetainCommandQueue(cq);
     code = clCreateProgramWithSource(ctx,1,&kernelcode,&kernel_length,&err);
     checkCLErr(err,"clCreateProgramWithSource");
-    err = clBuildProgram(code,1,&dev,"",NULL,NULL);
+    err = clBuildProgram(code,1,&dev,"-cl-fast-relaxed-math -cl-intel-greater-than-4GB-buffer-required -w",NULL,NULL);
     if (err != CL_SUCCESS /* || true */) { //== CL_BUILD_PROGRAM_FAILURE) {
         char buildlog[16384];
         clGetProgramBuildInfo(code,device,CL_PROGRAM_BUILD_LOG,16384,buildlog,NULL);
